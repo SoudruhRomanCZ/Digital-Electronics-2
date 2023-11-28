@@ -418,6 +418,19 @@ void oled_puts_p(const char* progmem_s){
         oled_putc(c);
     }
 }
+/*************************************************************************
+ * Function: writeDataToOLED(data, x, y)
+ * Purpose:  print string to OLED
+ * Input:    integer data printed on x and y coordinates on OLED
+ * Returns:  none
+ **************************************************************************/
+void writeDataToOLED(int data, int x, int y) {
+    char string[4];
+    itoa(data, string, 10);
+    oled_gotoxy(x, y);
+    oled_puts(string);
+}/* writeDataToOLED */
+
 #ifdef GRAPHICMODE
 // #pragma mark -
 // #pragma mark GRAPHIC FUNCTIONS

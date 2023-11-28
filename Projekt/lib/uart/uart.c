@@ -567,6 +567,26 @@ void uart_puts_p(const char *progmem_s)
     while ( (c = pgm_read_byte(progmem_s++)) )
         uart_putc(c);
 }/* uart_puts_p */
+/*************************************************************************
+ * Function: writeDataToUART(data, inter, tab, end)
+ * Purpose:  transmit strings to UART
+ * Input:    intiger value, interpunction, tabulator and end of line to be transmitted
+ * Returns:  none
+ **************************************************************************/
+void writeDataToUART(int data, char* inter, bool tab, bool end) 
+{
+    char string[4];
+    itoa(data, string, 10);
+    uart_puts(string);
+    uart_puts(inter);
+    if (tab==1){
+        uart_puts('\t');
+    }
+    if (end==1){
+        uart_puts('\r\n');
+    }
+    
+}/* riteDataToUART */
 
 /*
  * these functions are only for ATmegas with two USART
