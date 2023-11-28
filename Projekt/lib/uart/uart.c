@@ -573,7 +573,7 @@ void uart_puts_p(const char *progmem_s)
  * Input:    intiger value, interpunction, tabulator and end of line to be transmitted
  * Returns:  none
  **************************************************************************/
-void writeDataToUART(int data, char* inter, bool tab, bool end) 
+void writeDataToUART(int data, char* inter, int tab, int end) 
 {
     char string[4];
     itoa(data, string, 10);

@@ -6,6 +6,7 @@
 // Including of needed libraries
 #include <avr/io.h>         // AVR device-specific IO definitions
 #include <avr/interrupt.h>  // Interrupts standard C library for AVR-GCC
+#include <avr/eeprom.h>
 #include <stdlib.h>         // C library. Needed for number conversions
 #include <timer.h>
 #include <oled.h>
@@ -28,6 +29,7 @@ struct RTC_values_structure {
     uint8_t mins;
     uint8_t hours;
     uint8_t days;
+    uint8_t date;
     uint8_t months;
     uint8_t years;
 } rtc;
@@ -35,8 +37,6 @@ uint16_t mois_int;
 // Normal values of moisture sensor
 const int AirValue = 620;   //you need to replace this value with Value_1
 const int WaterValue = 310;  //you need to replace this value with Value_2
-// (AirValue - WaterValue)/100; meaning 1% is 2.5 of measured value from 0 to 1023 ex. 310 adn 620 of measuring 
-contst float onePercent = (AirValue - WaterValue)/100; //is it working that way? should be 2.5
 //const float onePercent = 2.5;
 
 // Variable for conversion of moisture sensor data to percentual value
@@ -51,6 +51,13 @@ volatile uint8_t new_sensor_data = 0;
 #define SENSOR_CHECKSUM 4 //what is this?
 // RTC
 #define RTC_ADR  0x68
+#define SECONDS_REG 0x00
+#define MINUTES_REG 0x01
+#define HOURS_REG 0x02
+#define DAY_REG 0x03
+#define DATE_REG 0x04
+#define MONTH_REG 0x05
+#define YEAR_REG 0x06
 //OLED
 #define OLED_ADR 0x3c
 
@@ -74,7 +81,7 @@ int main(void)
 
     oled_charMode(NORMALSIZE);
 
-    char string[3];  // For converting numbers by itoa() 2 or 3 or more?
+    //char string[3];  // For converting numbers by itoa() 2 or 3 or more?
 
     twi_init();
 
@@ -110,132 +117,148 @@ int main(void)
     // Timer1
     TIM1_OVF_1SEC
     TIM1_OVF_ENABLE
-    
+
+    float onePercent =(AirValue - WaterValue)/100; 
+
     while (1) {
         if (new_sensor_data == 1) {
             if (twi_test_address(RTC_ADR) == 0){
-            writeDataToUART(rtc.hours, ":" , false, false);
-            writeDataToUART(rtc.mins, ":" , false, false);
-            writeDataToUART(rtc.secs, " : " , true, false);
-            if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
-            writeDataToOLED(rtc.hours,0,4)
-            oled_gotoxy(2, 4);
-            oled_puts(":");
-            writeDataToOLED(rtc.mins,3,4)
-            oled_gotoxy(5, 4);
-            oled_puts(":");
-            writeDataToOLED(rtc.secs,6,4)
-            }
+                writeDataToUART(rtc.hours, ":", 0, 0);
+                writeDataToUART(rtc.mins, ":" , 0, 0);
+                writeDataToUART(rtc.secs, " : " , 1, 0);
+                if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
+                    writeDataToOLED(rtc.hours,0,4);
+                    oled_gotoxy(2, 4);
+                    oled_puts(":");
+                    writeDataToOLED(rtc.mins,3,4);
+                    oled_gotoxy(5, 4);
+                    oled_puts(":");
+                    writeDataToOLED(rtc.secs,6,4);
+                }
 
-            /*
-        	// Display RTC data
-            itoa(rtc.hours, string, 16);
-            uart_puts(string);
-            uart_puts(":");
-            itoa(rtc.mins, string, 16);
-            uart_puts(string);
-            uart_puts(":");
-            itoa(rtc.secs, string, 16);
-            uart_puts(string);
-            uart_puts(":\t");
-            */
+                /*
+        	    // Display RTC data
+                itoa(rtc.hours, string, 16);
+                uart_puts(string);
+                uart_puts(":");
+                itoa(rtc.mins, string, 16);
+                uart_puts(string);
+                uart_puts(":");
+                itoa(rtc.secs, string, 16);
+                uart_puts(string);
+                uart_puts(":\t");
+                */
             }
-
             if (twi_test_address(SENSOR_ADR) == 0){ // how to add checking if OLED is connected should be 2 functions that writes into OLEd and into UART(console)
-            oled_clrscr(); //it will clear the first message wouldnt the message be there all the time? so load it again
-            //writing an integer value of temperature
-            //itoa(dht12.temp_int, string, 10);
+                oled_clrscr(); //it will clear the first message wouldnt the message be there all the time? so load it again
+                //writing an integer value of temperature
+                //itoa(dht12.temp_int, string, 10);
 
-            writeDataToUART(dht12.temp_int, "." , false, false);
-            writeDataToUART(dht12.temp_dec, " °C " , true, false);
-            if(twi_test_address(OLED_ADR) == 0){
-            writeDataToOLED(dht12.temp_int,0,2)
-            oled_gotoxy(2, 2);
-            oled_puts(".");
-            writeDataToOLED(dht12.temp_dec,3,2)
-            oled_gotoxy(4, 2);
-            oled_puts(" °C ");
-            }
-            /*
-            //writing an decimal value of temperature
-            itoa(dht12.temp_dec, string, 10);
-            uart_puts(string);
-            uart_puts(" °C ");
-            oled_gotoxy(2, 2);
-            oled_puts(".");
-            oled_gotoxy(3, 2);
-            oled_puts(string);
-            oled_gotoxy(4, 2);
-            oled_puts(" °C ");
-            */
+                writeDataToUART(dht12.temp_int, "." , 0, 0);
+                writeDataToUART(dht12.temp_dec, " °C " , 1, 0);
+                if(twi_test_address(OLED_ADR) == 0){
+                writeDataToOLED(dht12.temp_int,0,2);
+                oled_gotoxy(2, 2);
+                oled_puts(".");
+                writeDataToOLED(dht12.temp_dec,3,2);
+                oled_gotoxy(4, 2);
+                oled_puts(" °C ");
+                }
+                /*
+                //writing an decimal value of temperature
+                itoa(dht12.temp_dec, string, 10);
+                uart_puts(string);
+                uart_puts(" °C ");
+                oled_gotoxy(2, 2);
+                oled_puts(".");
+                oled_gotoxy(3, 2);
+                oled_puts(string);
+                oled_gotoxy(4, 2);
+                oled_puts(" °C ");
+                */
             }
             
             if(mois_int != 0){
+                //add RGB LED for each state?
                 if (mois_int>850){
-                    writeDataToUART(mois_int, " : Plant is thirsty, turning on the pump" , false, true);
+                    writeDataToUART(mois_int, " : Plant is thirsty, turning on the pump" , 0, 1);
+                    // write code for Relay enabled
                 }
                 else if(mois_int>750){
-                    writeDataToUART(mois_int, " : Plant is watered enough, pump is off" , false, true);  
+                    writeDataToUART(mois_int, " : Plant is watered enough, pump is off" , 0, 1);  
                 }
                 else if(mois_int>700){
-                    writeDataToUART(mois_int, " : Plant is watered enough, turning off the pump" , false, true);
+                    writeDataToUART(mois_int, " : Plant is watered enough, turning off the pump" , 0, 1);
+                    // write code for Relay disabled
                 }
                 else {
-                    writeDataToUART(mois_int, " : Value out of range, there is problem with moisture sensor" , false, true);
+                    writeDataToUART(mois_int, " : Value out of range, there is problem with moisture sensor" , 0, 1);
                 }
                 // writeDataToUART(mois_int, " " , false, true);
                 if(twi_test_address(OLED_ADR) == 0){
-                    writeDataToOLED(mois_int,0,6)
+                    writeDataToOLED(mois_int*onePercent,0,6);
                     oled_gotoxy(3, 6);
                     oled_puts("%"); //should work
                     oled_gotoxy(5, 6);
                     if (mois_int>850){
                         oled_puts(" : Plant is thirsty, turning on the pump");
+                        // write code for Relay enabled
                     }
                     else if(mois_int>750){
                         oled_puts(" : Plant is watered enough, pump is off");   
                     }
                     else if(mois_int>700){
-                        oled_puts(" : Plant is watered enough, turning off the pump"); 
+                        oled_puts(" : Plant is watered enough, turning off the pump");
+                        // write code for Relay disabled 
                     }
                     else {
-                        oled_puts(" [ERROR] Value out of range");                     }
+                        oled_puts(" [ERROR] Value out of range");
+                    }
                 }
-            /*  
-            // writing an procentual value of moisture
-            itoa(mois_int, string, 10);
-            uart_puts(string);
-            oled_gotoxy(0, 3);
-            oled_puts(string);
-            oled_gotoxy(3, 3);
-            oled_puts("percent");
-             
-            if (mois_int>850){
-                uart_puts(": Rostlina má nedostatek vláhy, zapínám zalévání\r\n");
-                oled_gotoxy(0, 4);// can we create some function of animated image on oled?
-                oled_puts("Watering");
+                /*  
+                // writing an procentual value of moisture 
+                itoa(mois_int, string, 10);
+                uart_puts(string);
+                oled_gotoxy(0, 3);
+                oled_puts(string);
+                oled_gotoxy(3, 3);
+                oled_puts("percent");
+                //is it really in %?
+                if (mois_int>850){
+                    uart_puts(": Rostlina má nedostatek vláhy, zapínám zalévání\r\n");
+                    oled_gotoxy(0, 4);// can we create some function of animated image on oled?
+                    oled_puts("Watering");
                 }
-            else if(mois_int>750){
-                uart_puts(": Rostlina má dostatek vláhy, zalévání nejede\r\n");
-                oled_gotoxy(0, 4);
-                oled_puts("adekvatna vlaha");    
-                    }
-            else if(mois_int>700){
-                uart_puts(": Rostlina má dostatek vláhy, vypínám zalévání\r\n");
-                oled_gotoxy(0, 4);
-                oled_puts("preliata");
-                    }
-            else {uart_puts(": Chyba snímače, hodnota mimo rozsah měření\r\n");
-                    }
+                else if(mois_int>750){
+                    uart_puts(": Rostlina má dostatek vláhy, zalévání nejede\r\n");
+                    oled_gotoxy(0, 4);
+                    oled_puts("adekvatna vlaha");    
+                }
+                else if(mois_int>700){
+                    uart_puts(": Rostlina má dostatek vláhy, vypínám zalévání\r\n");
+                    oled_gotoxy(0, 4);
+                    oled_puts("preliata");
+                }
+                else {uart_puts(": Chyba snímače, hodnota mimo rozsah měření\r\n");
+                }
+                */
             }
-            */
-            oled_display();
+        oled_display();
 
-            // Do not print it again and wait for the new data
-            new_sensor_data = 0;
-            }
-        }return 0;
-    }
+        // saving data to Arduinos EEPROM memory
+        // if read previus data from Arduinos EEPROM memory and compare if changed then jump in EEPROM memory and save new data, bcose there is time stamp on the data 
+        if(ëeprom_read_block()){
+            eeprom_write_block(dth12,)
+        }else {
+
+        }
+        
+        // Do not print it again and wait for the new data
+        new_sensor_data = 0;
+        }
+    }return 0;
+} //end of main loop
+
 /* Interrupt service routines ----------------------------------------*/
 /**********************************************************************
 * Function: Timer/Counter1 overflow interrupt
@@ -276,9 +299,9 @@ ISR(TIMER1_OVF_vect)
     // Read Time from RTC DS3231; SLA = 0x68
         // Test ACK from RTC
         twi_start();
-        if (twi_write((RTC_ADR<<1) | TWI_WRITE) == 0) { //can it be rewritten to for loop and with array indexed by sec min hour etc.
+        if(twi_write((RTC_ADR<<1) | TWI_WRITE) == 0) { //can it be rewritten to for loop and with array indexed by sec min hour etc.
             // Set internal memory location
-            twi_write(RTC_SEC_MEM);
+            twi_write(SECONDS_REG);
             twi_stop();
             // Read data from internal memory
             twi_start();
@@ -286,27 +309,32 @@ ISR(TIMER1_OVF_vect)
             rtc.secs = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
-            twi_write(RTC_MIN_MEM);
+            twi_write(MINUTES_REG);
             twi_stop();
             rtc.mins = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
-            twi_write(RTC_HOUR_MEM);
+            twi_write(HOURS_REG);
             twi_stop();
             rtc.hours = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
-            twi_write(RTC_DAY_MEM);
+            twi_write(DAY_REG);
             twi_stop();
             rtc.days = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
-            twi_write(RTC_MON_MEM);
+            twi_write(DATE_REG);
+            twi_stop();
+            rtc.date = twi_read(TWI_ACK);
+            twi_start();
+            // Set internal memory location
+            twi_write(MONTH_REG);
             twi_stop();
             rtc.months = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
-            twi_write(RTC_YEA_MEM);
+            twi_write(YEAR_REG);
             twi_stop();
             rtc.years = twi_read(TWI_ACK);
         }
