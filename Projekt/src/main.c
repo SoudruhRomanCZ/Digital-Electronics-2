@@ -13,6 +13,7 @@
 #include <gpio.h>
 #include <twi.h>
 #include <uart.h>
+#include <RTC.c>
 
 /* Global variables --------------------------------------------------*/
 // Declaration of "dht12" variable with structure "DHT_values_structure"
@@ -20,7 +21,7 @@ struct Values_structure {
    uint8_t hum_int;
    uint8_t hum_dec;
    uint8_t temp_int;
-   uint8_t temp_dec;
+   uint8_t temp_dec; // 32 bit == 4 byte
    uint8_t checksum;
 } dht12;
 // Declaration of "rtc" variable with structure "RTC_values_structure"
@@ -31,9 +32,9 @@ struct RTC_values_structure {
     uint8_t days;
     uint8_t date;
     uint8_t months;
-    uint8_t years;
+    uint8_t years;  //56 bit == 7 byte
 } rtc;
-uint16_t mois_int;
+uint16_t mois_int; //total of 112b bits to store every reading at 32kb storage it is 286 readings == 1 reading a second 4 min 46 sec of saved data
 // Normal values of moisture sensor
 const int AirValue = 620;   //you need to replace this value with Value_1
 const int WaterValue = 310;  //you need to replace this value with Value_2
@@ -48,9 +49,10 @@ volatile uint8_t new_sensor_data = 0;
 #define SENSOR_ADR 0x5c
 #define SENSOR_HUM_MEM 0
 #define SENSOR_TEMP_MEM 2
-#define SENSOR_CHECKSUM 4 //what is this?
+#define SENSOR_CHECKSUM 4 
 // RTC
 #define RTC_ADR  0x68
+#define EEPROM_ADR 0x57
 #define SECONDS_REG 0x00
 #define MINUTES_REG 0x01
 #define HOURS_REG 0x02
@@ -118,6 +120,9 @@ int main(void)
     TIM1_OVF_1SEC
     TIM1_OVF_ENABLE
 
+    //function to load time to DS3231 
+    writeTimeToDS3231(0,0,9,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
+
     float onePercent =(AirValue - WaterValue)/100; 
 
     while (1) {
@@ -181,10 +186,12 @@ int main(void)
             if(mois_int != 0){
                 //add RGB LED for each state?
                 if (mois_int>850){
+                     uart_puts( "\x1b[1;31m"); // Set style to bold, red foreground
                     writeDataToUART(mois_int, " : Plant is thirsty, turning on the pump" , 0, 1);
                     // write code for Relay enabled
                 }
                 else if(mois_int>750){
+                    uart_puts("\x1b[4;32m"); // 4: underline style; 32: green foreground
                     writeDataToUART(mois_int, " : Plant is watered enough, pump is off" , 0, 1);  
                 }
                 else if(mois_int>700){
@@ -194,6 +201,7 @@ int main(void)
                 else {
                     writeDataToUART(mois_int, " : Value out of range, there is problem with moisture sensor" , 0, 1);
                 }
+                uart_puts("\x1b[0m"); // 0: reset all attributes
                 // writeDataToUART(mois_int, " " , false, true);
                 if(twi_test_address(OLED_ADR) == 0){
                     writeDataToOLED(mois_int*onePercent,0,6);
@@ -245,13 +253,9 @@ int main(void)
             }
         oled_display();
 
-        // saving data to Arduinos EEPROM memory
+        // saving data to RTC EEPROM memory
         // if read previus data from Arduinos EEPROM memory and compare if changed then jump in EEPROM memory and save new data, bcose there is time stamp on the data 
-        if(ëeprom_read_block()){
-            eeprom_write_block(dth12,)
-        }else {
-
-        }
+        saveDataToRtcEeprom()
         
         // Do not print it again and wait for the new data
         new_sensor_data = 0;
@@ -305,7 +309,7 @@ ISR(TIMER1_OVF_vect)
             twi_stop();
             // Read data from internal memory
             twi_start();
-            twi_write((RTC_ADR<<1) | TWI_READ); //how the F it knows what data to read from its registers to get this numbers?
+            twi_write((RTC_ADR<<1) | TWI_READ);
             rtc.secs = twi_read(TWI_ACK);
             twi_start();
             // Set internal memory location
@@ -350,5 +354,3 @@ ISR(ADC_vect)
     mois_int = ADC;
     //was there itoa of mois_int to string
 }
-
-

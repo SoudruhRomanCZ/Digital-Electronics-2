@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "oled.h": "c",
+        "stdlib.h": "c",
+        "timer.h": "c"
+    }
+}
