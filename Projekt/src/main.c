@@ -128,11 +128,11 @@ int main(void)
     while (1) {
         if (new_sensor_data == 1) {
             if (twi_test_address(RTC_ADR) == 0){
-                writeDataToUART(rtc.hours, ":", 0, 0);
+                writeDataToUART(rtc.hours & 0b111111, ":", 0, 0); //& 0b111111 which position i want to send
                 writeDataToUART(rtc.mins, ":" , 0, 0);
                 writeDataToUART(rtc.secs, " : " , 1, 0);
                 if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
-                    writeDataToOLED(rtc.hours,0,4);
+                    writeDataToOLED(rtc.hours & 0b111111,0,4);
                     oled_gotoxy(2, 4);
                     oled_puts(":");
                     writeDataToOLED(rtc.mins,3,4);
@@ -255,7 +255,7 @@ int main(void)
 
         // saving data to RTC EEPROM memory
         // if read previus data from Arduinos EEPROM memory and compare if changed then jump in EEPROM memory and save new data, bcose there is time stamp on the data 
-        saveDataToRtcEeprom()
+        //saveDataToRtcEeprom();
         
         // Do not print it again and wait for the new data
         new_sensor_data = 0;
@@ -269,7 +269,7 @@ int main(void)
 * Purpose:  Read temperature and humidity from DHT12, SLA = 0x5c.
 **********************************************************************/
 ISR(TIMER1_OVF_vect)
-{
+{       // add some conditions for I2C sensors, to work even if 1 is not connected, if hum sensor is not connected read temperature from RTC
     ADCSRA = ADCSRA | (1<<ADSC);
     // Test ACK from sensor
     twi_start();
@@ -347,7 +347,7 @@ ISR(TIMER1_OVF_vect)
 
 ISR(ADC_vect)
 {
-    char string[4];  // String for converted numbers by itoa()
+    // char string[4];  // String for converted numbers by itoa()
 
     // Read converted value
     // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
