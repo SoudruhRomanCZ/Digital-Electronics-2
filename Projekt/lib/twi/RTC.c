@@ -31,7 +31,7 @@ struct Data {
 
     uint16_t mois_int; // 2 bytes
 }; // 14 or 13 bytes 
-*/
+
 struct Values_structure {
     uint8_t hum_int;
     uint8_t hum_dec;
@@ -49,7 +49,7 @@ struct RTC_values_structure {
     uint8_t months;
     uint8_t years;  // 7 bytes
 } rtc;
-
+*/
 uint16_t mois_int;
 // Function to write time to DS3231 RTC module
 void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint8_t year) {
@@ -146,6 +146,7 @@ void readDataFromEEPROM(struct Data* data) {
     eeprom_read_block((void*)data, (const void*)0, sizeof(struct Data));
 }
 */
+/*
 void writeDataToEEPROM() {
     struct Values_structure dht12Data;
     struct RTC_values_structure rtcData;
@@ -198,3 +199,4 @@ void readDataFromEEPROM() {
     // Read the mois_int variable from EEPROM
     mois_int = eeprom_read_word((const uint16_t*)(sizeof(struct Values_structure) + sizeof(struct RTC_values_structure)));
 }
+*/

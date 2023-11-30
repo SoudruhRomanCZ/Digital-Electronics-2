@@ -40,7 +40,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include "uart.h"
-
+#include <stdlib.h>         // C library. Needed for number conversions
 
 /*
  *  constants and macros

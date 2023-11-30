@@ -425,7 +425,7 @@ void oled_puts_p(const char* progmem_s){
  * Returns:  none
  **************************************************************************/
 void writeDataToOLED(int data, int x, int y) {
-    char string[4];
+    char string[16];
     itoa(data, string, 10);
     oled_gotoxy(x, y);
     oled_puts(string);
