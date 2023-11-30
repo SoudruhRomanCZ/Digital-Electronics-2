@@ -13,44 +13,11 @@
 #define DATE_REG 0x04
 #define MONTH_REG 0x05
 #define YEAR_REG 0x06
-/*
-struct Data {
-    uint8_t hum_int;
-    uint8_t hum_dec;
-    uint8_t temp_int;
-    uint8_t temp_dec; // 4 bytes
-    uint8_t checksum; // 5 bytes
 
-    uint8_t secs;
-    uint8_t mins;
-    uint8_t hours;
-    uint8_t days;
-    uint8_t date;
-    uint8_t months;
-    uint8_t years;  //7 bytes
+uint64_t address=0;
+uint8_t Data;
+struct Data* data;
 
-    uint16_t mois_int; // 2 bytes
-}; // 14 or 13 bytes 
-
-struct Values_structure {
-    uint8_t hum_int;
-    uint8_t hum_dec;
-    uint8_t temp_int;
-    uint8_t temp_dec; // 4 bytes
-    uint8_t checksum;
-} dht12;
-
-struct RTC_values_structure {
-    uint8_t secs;
-    uint8_t mins;
-    uint8_t hours;
-    uint8_t days;
-    uint8_t date;
-    uint8_t months;
-    uint8_t years;  // 7 bytes
-} rtc;
-*/
-uint16_t mois_int;
 // Function to write time to DS3231 RTC module
 void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint8_t year) {
     // Start I2C communication
@@ -122,8 +89,6 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     // Stop I2C communication
     twi_stop();
 }
-
-
 /*
 // Function to save data to RTC EEPROM memory
 void saveDataToRtcEeprom() { //have to save 13 bytes 104 bits of data
@@ -138,14 +103,44 @@ void saveDataToRtcEeprom() { //have to save 13 bytes 104 bits of data
     }
 }
 */
-/*
-void writeDataToEEPROM(struct Data* data) {
-    eeprom_write_block((const void*)data, (void*)0, sizeof(struct Data));
+
+void writedatatoEEPROM(data) {
+    // Start I2C communication
+    twi_start();
+
+    // Check ACK from RTC 
+    if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
+    eeprom_write_block((const void*)data, (void*)0, sizeof(data));
+    address=address+sizeof(data);
+    }
+    twi_stop();
 }
-void readDataFromEEPROM(struct Data* data) {
-    eeprom_read_block((void*)data, (const void*)0, sizeof(struct Data));
+void write8datatoEEPROM(Data) {
+    // Start I2C communication
+    twi_start();
+
+    // Check ACK from RTC 
+    if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
+    eeprom_write_byte(address, Data);
+    address++;
+    }
+    twi_stop();
 }
-*/
+void readdatatoEEPROM(uint8_t x) {
+    for (uint8_t i = 0; i <x;){
+        // Start I2C communication
+        twi_start();
+
+        // Check ACK from RTC 
+        if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
+            twi_write(Data);  
+        }
+        twi_stop();
+        twi_start();
+        Data=eeprom_read_byte(i);
+        twi_stop();
+    }   
+}
 /*
 void writeDataToEEPROM() {
     struct Values_structure dht12Data;
