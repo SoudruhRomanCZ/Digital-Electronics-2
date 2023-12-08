@@ -13,46 +13,10 @@
 #define DATE_REG 0x04
 #define MONTH_REG 0x05
 #define YEAR_REG 0x06
-/*
-struct Data {
-    uint8_t hum_int;
-    uint8_t hum_dec;
-    uint8_t temp_int;
-    uint8_t temp_dec; // 4 bytes
-    uint8_t checksum; // 5 bytes
 
-    uint8_t secs;
-    uint8_t mins;
-    uint8_t hours;
-    uint8_t days;
-    uint8_t date;
-    uint8_t months;
-    uint8_t years;  //7 bytes
-
-    uint16_t mois_int; // 2 bytes
-}; // 14 or 13 bytes 
-
-struct Values_structure {
-    uint8_t hum_int;
-    uint8_t hum_dec;
-    uint8_t temp_int;
-    uint8_t temp_dec; // 4 bytes
-    uint8_t checksum;
-} dht12;
-
-struct RTC_values_structure {
-    uint8_t secs;
-    uint8_t mins;
-    uint8_t hours;
-    uint8_t days;
-    uint8_t date;
-    uint8_t months;
-    uint8_t years;  // 7 bytes
-} rtc;
-*/
 uint16_t mois_int;
 // Function to write time to DS3231 RTC module
-void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint8_t year) {
+void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint16_t year) {
     // Start I2C communication
     twi_start();
 
@@ -60,7 +24,7 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     if (twi_write((RTC_ADR << 1) | TWI_WRITE) == 0) {
         // Set internal memory location to seconds register
         twi_write(SECONDS_REG);
-        twi_write(seconds); // Write seconds to the register
+        twi_write(seconds);// Write seconds to the register
         twi_stop();
 
         // Start I2C communication again
@@ -69,7 +33,7 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
         // Set internal memory location to minutes register
         twi_write((RTC_ADR << 1) | TWI_WRITE);
         twi_write(MINUTES_REG);
-        twi_write(minutes); // Write minutes to the register
+        twi_write(minutes);// Write seconds to the register
         twi_stop();
 
         // Start I2C communication again
@@ -120,7 +84,7 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     }
 
     // Stop I2C communication
-    twi_stop();
+    //twi_stop();
 }
 
 

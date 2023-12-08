@@ -67,7 +67,11 @@ volatile uint8_t new_sensor_data = 0;
 // defining needed pins (do i really need this?)
 
 #define soil PC0
-
+#define LED_GREEN PB2   // PB5 is AVR pin where green on-board LED 
+#define LED_RED PB3
+#define LED_BLUE PB1
+#define RELAY PB0
+#define BUTTON PB4
 int main(void)
 { 
     oled_init(OLED_DISP_ON);
@@ -93,20 +97,6 @@ int main(void)
     // Initialize USART to asynchronous, 8-N-1, 115200 Bd
     uart_init(UART_BAUD_SELECT(115200, F_CPU));
     sei();  // Needed for UART
-    /*
-    // Test if sensor is ready
-    if (twi_test_address(SENSOR_ADR) == 0){
-        oled_gotoxy(0, 3);
-        oled_puts("TEMPERATURE sensor detected");
-        uart_puts("TEMPERATURE sensor detected\r\n"); //
-        }
-    else {
-        oled_gotoxy(0, 4);
-        oled_puts("[ERROR] TEMPERATURE device not detected");
-        uart_puts("[ERROR] TEMPERATURE device not detected\r\n");
-        while (1);
-    }
-    */
         // Configure Analog-to-Digital Convertion unit
         // Select ADC voltage reference to "AVcc with external capacitor at AREF pin"
         ADMUX = ADMUX | (1<<REFS0);
@@ -123,21 +113,30 @@ int main(void)
     TIM1_OVF_1SEC
     TIM1_OVF_ENABLE
 
+    // 
+    GPIO_mode_output(&DDRB, LED_GREEN);  // Set output mode in DDRB reg
+    GPIO_mode_output(&DDRB, LED_RED);  // Set output mode in DDRB reg
+    GPIO_mode_output(&DDRB, LED_BLUE);  // Set output mode in DDRB reg
+    GPIO_mode_output(&DDRB, RELAY);  // Set output mode in DDRB reg
+    GPIO_mode_input_pullup(&DDRB, BUTTON);
+
     //function to load time to DS3231 
-    writeTimeToDS3231(0,0,9,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
-
-    //float onePercent = 2.5;
-
+    writeTimeToDS3231(0x50,0x9,0x10,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
+    char string[4];
     while (1) {
         if (new_sensor_data == 1) {
             oled_clrscr(); 
             
             if (twi_test_address(RTC_ADR) == 0){
-                writeDataToUART(rtc.hours, ":", 0, 0); //& 0b111111 which position i want to send
-                writeDataToUART(rtc.mins, ":" , 0, 0);
-                writeDataToUART(rtc.secs, " : " , 0, 0);
+                writeDataToUART((rtc.hours& 0b00110000)/16, "", 0, 0); //& 0b111111 which position i want to send
+                writeDataToUART(rtc.hours& 0b00001111, ":" , 0, 0);
+                writeDataToUART((rtc.mins& 0b01110000)/16, "" , 0, 0);
+                writeDataToUART(rtc.mins& 0b00001111, ":" , 0, 0);
+                writeDataToUART((rtc.secs & 0b01110000)/16, "" , 0, 0);
+                writeDataToUART(rtc.secs& 0b00001111, " : " , 0, 0);
+               
                 if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
-                    writeDataToOLED(rtc.hours ,0,0);
+                    writeDataToOLED((rtc.hours& 0b00110000)/16,0,0);
                     oled_gotoxy(2, 0);
                     oled_puts(":");
                     writeDataToOLED(rtc.mins,3,0);
@@ -149,7 +148,6 @@ int main(void)
             
             if (twi_test_address(SENSOR_ADR) == 0){
                 //writing an integer value of temperature
-
                 writeDataToUART(dht12.temp_int, "." , 0, 0);
                 writeDataToUART(dht12.temp_dec, " °C " , 0, 0);
                 if(twi_test_address(OLED_ADR) == 0){
@@ -160,45 +158,41 @@ int main(void)
                 oled_gotoxy(4, 2);
                 oled_puts(" °C ");
                 }
-                /*
-                //writing an decimal value of temperature
-                itoa(dht12.temp_dec, string, 10);
-                uart_puts(string);
-                uart_puts(" °C ");
-                oled_gotoxy(2, 2);
-                oled_puts(".");
-                oled_gotoxy(3, 2);
-                oled_puts(string);
-                oled_gotoxy(4, 2);
-                oled_puts(" °C ");
-                */
             }
             
             if(mois_int != 0){
-
                 //percentualValue = 100-((mois_int - WaterValue)/onePercent);
                 percentualValue = (mois_int - WaterValue);
                 percentualValue = percentualValue/onePercent;
                 percentualValue = 100-percentualValue;
 
-
-
                 //add RGB LED for each state?
-                if (mois_int>850){
+                if (percentualValue<30){
                     //uart_puts('\x1b[1;31m'); // Set style to bold, red foreground
                     writeDataToUART(percentualValue, " % : Plant is thirsty, turning on the pump\r\n" , 0, 1);
                     // write code for Relay enabled
+                    GPIO_write_high(&PORTB, LED_RED);   // Set output low in PORTB reg
+                    GPIO_write_low(&PORTB, RELAY);   // Set output low in PORTB reg
+                    GPIO_write_low(&PORTB, LED_GREEN);
+                    GPIO_write_low(&PORTB, LED_BLUE);
                 }
-                else if(mois_int>750){
+                else if(percentualValue<60){
                     //uart_puts('\x1b[4;32m'); // 4: underline style; 32: green foreground
                     writeDataToUART(percentualValue, " % : Plant is watered enough, pump is off\r\n" , 0, 1);  
+                    GPIO_write_high(&PORTB, LED_BLUE);   // Set output low in PORTB reg
+                    GPIO_write_low(&PORTB, LED_RED);
+                    GPIO_write_low(&PORTB, LED_GREEN);
                 }
-                else if(mois_int>700){
+                else if(percentualValue>=60 & percentualValue<100){
                     writeDataToUART(percentualValue, " % : Plant is watered enough, turning off the pump\r\n" , 0, 1);
-                    // write code for Relay disabled
+                    GPIO_write_high(&PORTB, LED_GREEN);   // Set output low in PORTB reg
+                    GPIO_write_low(&PORTB, LED_RED);
+                    GPIO_write_low(&PORTB, LED_BLUE);
+                    GPIO_write_high(&PORTB, RELAY);   // Set output low in PORTB reg
+
                 }
                 else {
-                    writeDataToUART(mois_int, " % : Value out of range, there is problem with moisture sensor\r\n" , 0, 1);
+                    writeDataToUART(percentualValue, " % : Value out of range, there is problem with moisture sensor\r\n" , 0, 1);
                 }
                 //uart_puts('\x1b[0m'); // 0: reset all attributes
                 // writeDataToUART(mois_int, " " , false, true);
@@ -208,24 +202,29 @@ int main(void)
                     oled_gotoxy(3, 4);
                     oled_puts("%");
                     oled_gotoxy(0, 6);
-                    if (mois_int>850){
+                    if (percentualValue<30){
                         oled_puts("DRY");
                         // write code for Relay enabled
-                    }
-                    else if(mois_int>750){
+                                            }
+                    else if(percentualValue<60){
                         oled_puts("Wet");   
                     }
-                    else if(mois_int>700){
+                    else if(percentualValue>60 & percentualValue<100){
                         oled_puts("Watered");
-                        // write code for Relay disabled 
                     }
                     else {
-                        oled_puts("[ERROR] Value out");
+                        oled_puts("[ERROR] Value");
                     }
                 }
             }
         oled_display();
 
+uart_puts(itoa(rtc.hours,string,2));
+uart_puts("\r\n");
+uart_puts(itoa(rtc.mins,string,2));
+uart_puts("\r\n");
+uart_puts(itoa(rtc.secs,string,2));
+uart_puts("\r\n");
         // saving data to RTC EEPROM memory
         // if read previus data from Arduinos EEPROM memory and compare if changed then jump in EEPROM memory and save new data, bcose there is time stamp on the data 
         //saveDataToRtcEeprom();
@@ -242,7 +241,7 @@ int main(void)
 * Purpose:  Read temperature and humidity from DHT12, SLA = 0x5c.
 **********************************************************************/
 ISR(TIMER1_OVF_vect)
-{       // add some conditions for I2C sensors, to work even if 1 is not connected, if hum sensor is not connected read temperature from RTC
+{   // add some conditions for I2C sensors, to work even if 1 is not connected, if hum sensor is not connected read temperature from RTC
     ADCSRA = ADCSRA | (1<<ADSC);
     // Test ACK from sensor
     twi_start();
@@ -271,16 +270,6 @@ ISR(TIMER1_OVF_vect)
     }
     twi_stop();
 
-            /*
-            // Display RTC data
-            itoa(rtc.mins, string, 16);
-            uart_puts(string);
-            uart_puts(".");
-            itoa(rtc.secs, string, 16);
-            uart_puts(string);
-            uart_puts(":\t");
-            */
-
     // Read Time from RTC DS3231; SLA = 0x68
     // FYI: MPU-6050; SLA = 0x68
         // Test ACK from RTC
@@ -297,53 +286,6 @@ ISR(TIMER1_OVF_vect)
             rtc.hours = twi_read(TWI_NACK);
         }
         twi_stop();
-    /*
-    // Read Time from RTC DS3231; SLA = 0x68
-        // Test ACK from RTC
-        twi_start();
-        if(twi_write((RTC_ADR<<1) | TWI_WRITE) == 0) { //can it be rewritten to for loop and with array indexed by sec min hour etc.
-            // Set internal memory location
-            twi_write(SECONDS_REG);
-            twi_stop();
-            // Read data from internal memory
-            twi_start();
-            twi_write((RTC_ADR<<1) | TWI_READ);
-            rtc.secs = twi_read(TWI_ACK);
-            
-            twi_start();
-            // Set internal memory location
-            twi_write(MINUTES_REG);
-            twi_stop();
-            rtc.mins = twi_read(TWI_ACK);
-            twi_start();
-            // Set internal memory location
-            twi_write(HOURS_REG);
-            twi_stop();
-            rtc.hours = twi_read(TWI_ACK);
-            
-            twi_start();
-            // Set internal memory location
-            twi_write(DAY_REG);
-            twi_stop();
-            rtc.days = twi_read(TWI_ACK);
-            twi_start();
-            // Set internal memory location
-            twi_write(DATE_REG);
-            twi_stop();
-            rtc.date = twi_read(TWI_ACK);
-            twi_start();
-            // Set internal memory location
-            twi_write(MONTH_REG);
-            twi_stop();
-            rtc.months = twi_read(TWI_ACK);
-            twi_start();
-            // Set internal memory location
-            twi_write(YEAR_REG);
-            twi_stop();
-            rtc.years = twi_read(TWI_ACK);
-        }   
-        twi_stop();*/
-        
 }
 
 ISR(ADC_vect)
