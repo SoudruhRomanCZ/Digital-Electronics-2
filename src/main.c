@@ -41,8 +41,8 @@ const uint16_t AirValue = 950;   //you need to replace this value with Value_1
 const uint16_t WaterValue = 650;  //you need to replace this value with Value_2 
 // Variable for conversion of moisture sensor data to percentual value
 const int onePercent = 3;
-int percentualValue;
-
+uint8_t percentualValue;
+uint16_t calculus;
 // Flag for printing new data from sensor
 volatile uint8_t new_sensor_data = 0;
 
@@ -72,12 +72,14 @@ volatile uint8_t new_sensor_data = 0;
 #define LED_BLUE PB1
 #define RELAY PB0
 #define BUTTON PB4
+
 int main(void)
 { 
     oled_init(OLED_DISP_ON);
     oled_clrscr();
-    //boot screen
-    oled_charMode(DOUBLESIZE);  //would rather write it on 1 line on the top of the screen
+    
+    // Boot screen
+    oled_charMode(DOUBLESIZE);
     oled_puts("SMART");
     oled_gotoxy(0, 2);
     oled_puts("PLANT");
@@ -86,11 +88,8 @@ int main(void)
     oled_gotoxy(0, 6);
     oled_puts("SYSTEM");
     oled_display();
-
-
     oled_charMode(NORMALSIZE);
 
-    //char string[3];  // For converting numbers by itoa() 2 or 3 or more?
 
     twi_init();
 
@@ -120,82 +119,204 @@ int main(void)
     GPIO_mode_output(&DDRB, RELAY);  // Set output mode in DDRB reg
     GPIO_mode_input_pullup(&DDRB, BUTTON);
 
-    //function to load time to DS3231 
-    writeTimeToDS3231(0x50,0x9,0x10,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
-    char string[4];
+    // Load time into DS3231 
+    writeTimeToDS3231(0x50,0x59,0x23,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
+    
+    uint16_t currentAddress = 0 ;
+    uint8_t button_was_pressed = 0;
+    
     while (1) {
+        
         if (new_sensor_data == 1) {
-            oled_clrscr(); 
+            oled_clrscr();
             
-            if (twi_test_address(RTC_ADR) == 0){
-                writeDataToUART((rtc.hours& 0b00110000)/16, "", 0, 0); //& 0b111111 which position i want to send
-                writeDataToUART(rtc.hours& 0b00001111, ":" , 0, 0);
-                writeDataToUART((rtc.mins& 0b01110000)/16, "" , 0, 0);
-                writeDataToUART(rtc.mins& 0b00001111, ":" , 0, 0);
-                writeDataToUART((rtc.secs & 0b01110000)/16, "" , 0, 0);
-                writeDataToUART(rtc.secs& 0b00001111, " : " , 0, 0);
-               
-                if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
+            // Conversion of the value from the plant's moisture sensor into percentages
+            calculus = (mois_int - WaterValue);
+            calculus = calculus/onePercent;
+            percentualValue = 100-calculus;
+           
+            // Save current data to RTC EEPROM
+            currentAddress = saveDataToRtcEeprom(percentualValue);
+
+            // Out of range ERROR handeling
+            if(percentualValue > 100){
+                percentualValue = 100;
+            }
+
+            if (percentualValue<30){
+                //writeDataToUART(percentualValue, " % : Plant is thirsty, turning on the pump\r\n" , 0, 1);
+                GPIO_write_high(&PORTB, LED_RED);
+                GPIO_write_low(&PORTB, LED_GREEN);
+                GPIO_write_low(&PORTB, LED_BLUE);
+                GPIO_write_low(&PORTB, RELAY);
+            }
+            else if(percentualValue<60){
+                //writeDataToUART(percentualValue, " % : Plant is watered enough, pump is off\r\n" , 0, 1);  
+                GPIO_write_high(&PORTB, LED_BLUE);
+                GPIO_write_low(&PORTB, LED_RED);
+                GPIO_write_low(&PORTB, LED_GREEN);
+            }
+            else if(percentualValue>=60){
+                //writeDataToUART(percentualValue, " % : Plant is watered enough, turning off the pump\r\n" , 0, 1);
+                GPIO_write_high(&PORTB, LED_GREEN);
+                GPIO_write_low(&PORTB, LED_RED);
+                GPIO_write_low(&PORTB, LED_BLUE);
+                GPIO_write_high(&PORTB, RELAY);
+            }
+
+            // Set all obtained data to be displayed on OLED
+            if(twi_test_address(OLED_ADR) == 0){
+
+                // Display time from RTC
+                if (twi_test_address(RTC_ADR) == 0){
                     writeDataToOLED((rtc.hours& 0b00110000)/16,0,0);
+                    writeDataToOLED(rtc.hours& 0b00001111,1,0);
                     oled_gotoxy(2, 0);
                     oled_puts(":");
-                    writeDataToOLED(rtc.mins,3,0);
+                    writeDataToOLED((rtc.mins& 0b01110000)/16,3,0);
+                    writeDataToOLED(rtc.mins& 0b00001111,4,0);
                     oled_gotoxy(5, 0);
                     oled_puts(":");
-                    writeDataToOLED(rtc.secs,6,0);
-                }                
-            }
-            
-            if (twi_test_address(SENSOR_ADR) == 0){
-                //writing an integer value of temperature
-                writeDataToUART(dht12.temp_int, "." , 0, 0);
-                writeDataToUART(dht12.temp_dec, " °C " , 0, 0);
-                if(twi_test_address(OLED_ADR) == 0){
-                writeDataToOLED(dht12.temp_int,0,2);
-                oled_gotoxy(2, 2);
-                oled_puts(".");
-                writeDataToOLED(dht12.temp_dec,3,2);
-                oled_gotoxy(4, 2);
-                oled_puts(" °C ");
+                    writeDataToOLED((rtc.secs& 0b01110000)/16,6,0);
+                    writeDataToOLED(rtc.secs& 0b00001111,7,0);
                 }
-            }
-            
-            if(mois_int != 0){
-                //percentualValue = 100-((mois_int - WaterValue)/onePercent);
-                percentualValue = (mois_int - WaterValue);
-                percentualValue = percentualValue/onePercent;
-                percentualValue = 100-percentualValue;
 
-                //add RGB LED for each state?
+                // Display temperature from temperature sensor
+                if (twi_test_address(SENSOR_ADR) == 0){
+                    writeDataToOLED(dht12.temp_int,0,2);
+                    oled_gotoxy(2, 2);
+                    oled_puts(".");
+                    writeDataToOLED(dht12.temp_dec,3,2);
+                    oled_gotoxy(4, 2);
+                    //oled_puts(" °C ");
+                    // Hope this will display the ° symbol
+                    oled_puts(" ");
+                    oled_putc((char)247); // degree symbol
+                    oled_puts("C ");
+                }
+
+                // Display plant's moisture percentage
+                writeDataToOLED(percentualValue,0,4);
+                //writeDataToOLED(mois_int,8,4);
+                oled_gotoxy(3, 4);
+                oled_puts("%");
+                oled_gotoxy(0, 6);
                 if (percentualValue<30){
-                    //uart_puts('\x1b[1;31m'); // Set style to bold, red foreground
-                    writeDataToUART(percentualValue, " % : Plant is thirsty, turning on the pump\r\n" , 0, 1);
-                    // write code for Relay enabled
-                    GPIO_write_high(&PORTB, LED_RED);   // Set output low in PORTB reg
-                    GPIO_write_low(&PORTB, RELAY);   // Set output low in PORTB reg
-                    GPIO_write_low(&PORTB, LED_GREEN);
-                    GPIO_write_low(&PORTB, LED_BLUE);
+                    oled_puts("Dry");
                 }
                 else if(percentualValue<60){
-                    //uart_puts('\x1b[4;32m'); // 4: underline style; 32: green foreground
-                    writeDataToUART(percentualValue, " % : Plant is watered enough, pump is off\r\n" , 0, 1);  
-                    GPIO_write_high(&PORTB, LED_BLUE);   // Set output low in PORTB reg
+                    oled_puts("Wet");   
+                }
+                else if(percentualValue>=60){
+                    oled_puts("Watered");
+                }
+            }
+
+        // Display all set data on OLED
+        oled_display();
+        // Do not print it again and wait for the new data
+        new_sensor_data = 0;
+        }
+
+        // If the button was pressed then display the stored data in serial monitor (data EXPORT)
+        if(GPIO_read(&DDRB,BUTTON)==0){
+            button_was_pressed = 1; 
+        }
+
+        if(button_was_pressed == 1){
+            for (uint16_t i = 0; i <= currentAddress; i++)
+            {
+                writeDataToUART(eeprom_read_byte(i), "percenta from EEPROM ", 0, 1);
+                uart_puts("\r\n");
+            }
+            uart_puts("That's all the data !");
+            button_was_pressed = 0;
+        }
+
+
+            //saveDataToRtcEeprom(rtc.hours);
+            //saveDataToRtcEeprom(rtc.mins);
+            //saveDataToRtcEeprom(rtc.secs);
+            //saveDataToRtcEeprom(dht12.temp_dec);
+            //saveDataToRtcEeprom(dht12.temp_int);
+            //saveDataToRtcEeprom(percentualValue);
+
+            /*
+            if (twi_test_address(RTC_ADR) == 0){
+                //writeDataToUART((rtc.hours& 0b00110000)/16, "", 0, 0); //& 0b111111 which position i want to send
+                //writeDataToUART(rtc.hours& 0b00001111, ":" , 0, 0); 
+                //readDatafromRtcEeprom();
+                //writeDataToUART((rtc.mins& 0b01110000)/16, "" , 0, 0);
+                //writeDataToUART(rtc.mins& 0b00001111, ":" , 0, 0);
+                //saveDataToRtcEeprom(rtc.mins);
+                //readDatafromRtcEeprom();
+                //writeDataToUART((rtc.secs & 0b01110000)/16, "" , 0, 0);
+                //writeDataToUART(rtc.secs& 0b00001111, " : " , 0, 0);
+                //saveDataToRtcEeprom(rtc.secs);
+                //readDatafromRtcEeprom();
+                if(twi_test_address(OLED_ADR) == 0){ // edit the x y position to make it nice
+                    writeDataToOLED((rtc.hours& 0b00110000)/16,0,0);
+                    writeDataToOLED(rtc.hours& 0b00001111,1,0);
+                    oled_gotoxy(2, 0);
+                    oled_puts(":");
+                    writeDataToOLED((rtc.mins& 0b01110000)/16,3,0);
+                    writeDataToOLED(rtc.mins& 0b00001111,4,0);
+                    oled_gotoxy(5, 0);
+                    oled_puts(":");
+                    writeDataToOLED((rtc.secs& 0b01110000)/16,6,0);
+                    writeDataToOLED(rtc.secs& 0b00001111,7,0);
+                }                
+            }
+            */
+
+            /*
+            if (twi_test_address(SENSOR_ADR) == 0){
+                //writing an integer value of temperature
+                //writeDataToUART(dht12.temp_int, "." , 0, 0);
+                //saveDataToRtcEeprom(dht12.temp_int);
+                //writeDataToUART(dht12.temp_dec, " °C " , 0, 0);
+                //saveDataToRtcEeprom(dht12.temp_dec);
+                if(twi_test_address(OLED_ADR) == 0){
+                    writeDataToOLED(dht12.temp_int,0,2);
+                    oled_gotoxy(2, 2);
+                    oled_puts(".");
+                    writeDataToOLED(dht12.temp_dec,3,2);
+                    oled_gotoxy(4, 2);
+                    oled_puts(" °C ");
+                }
+            }
+            */
+            
+            /*
+            if(mois_int != 0){
+
+
+                
+                if (percentualValue<30){
+                    //writeDataToUART(percentualValue, " % : Plant is thirsty, turning on the pump\r\n" , 0, 1);
+                    GPIO_write_high(&PORTB, LED_RED);
+                    GPIO_write_low(&PORTB, LED_GREEN);
+                    GPIO_write_low(&PORTB, LED_BLUE);
+                    GPIO_write_low(&PORTB, RELAY);
+                }
+                else if(percentualValue<60){
+                    //writeDataToUART(percentualValue, " % : Plant is watered enough, pump is off\r\n" , 0, 1);  
+                    GPIO_write_high(&PORTB, LED_BLUE);
                     GPIO_write_low(&PORTB, LED_RED);
                     GPIO_write_low(&PORTB, LED_GREEN);
                 }
                 else if(percentualValue>=60 & percentualValue<100){
-                    writeDataToUART(percentualValue, " % : Plant is watered enough, turning off the pump\r\n" , 0, 1);
-                    GPIO_write_high(&PORTB, LED_GREEN);   // Set output low in PORTB reg
+                    //writeDataToUART(percentualValue, " % : Plant is watered enough, turning off the pump\r\n" , 0, 1);
+                    GPIO_write_high(&PORTB, LED_GREEN);
                     GPIO_write_low(&PORTB, LED_RED);
                     GPIO_write_low(&PORTB, LED_BLUE);
-                    GPIO_write_high(&PORTB, RELAY);   // Set output low in PORTB reg
+                    GPIO_write_high(&PORTB, RELAY);
 
                 }
                 else {
-                    writeDataToUART(percentualValue, " % : Value out of range, there is problem with moisture sensor\r\n" , 0, 1);
+                    //writeDataToUART(percentualValue, " % : Value out of range, there is problem with moisture sensor\r\n" , 0, 1);
                 }
-                //uart_puts('\x1b[0m'); // 0: reset all attributes
-                // writeDataToUART(mois_int, " " , false, true);
+
                 if(twi_test_address(OLED_ADR) == 0){
                     writeDataToOLED(percentualValue,0,4);
                     writeDataToOLED(mois_int,8,4);
@@ -203,13 +324,13 @@ int main(void)
                     oled_puts("%");
                     oled_gotoxy(0, 6);
                     if (percentualValue<30){
-                        oled_puts("DRY");
+                        oled_puts("Dry");
                         // write code for Relay enabled
-                                            }
+                    }
                     else if(percentualValue<60){
                         oled_puts("Wet");   
                     }
-                    else if(percentualValue>60 & percentualValue<100){
+                    else if(percentualValue>=60 & percentualValue<100){
                         oled_puts("Watered");
                     }
                     else {
@@ -217,23 +338,12 @@ int main(void)
                     }
                 }
             }
-        oled_display();
+            */
+    }
+    return 0;
+} // End of main function
 
-uart_puts(itoa(rtc.hours,string,2));
-uart_puts("\r\n");
-uart_puts(itoa(rtc.mins,string,2));
-uart_puts("\r\n");
-uart_puts(itoa(rtc.secs,string,2));
-uart_puts("\r\n");
-        // saving data to RTC EEPROM memory
-        // if read previus data from Arduinos EEPROM memory and compare if changed then jump in EEPROM memory and save new data, bcose there is time stamp on the data 
-        //saveDataToRtcEeprom();
-        
-        // Do not print it again and wait for the new data
-        new_sensor_data = 0;
-        }
-    }return 0;
-} //end of main loop
+
 
 /* Interrupt service routines ----------------------------------------*/
 /**********************************************************************

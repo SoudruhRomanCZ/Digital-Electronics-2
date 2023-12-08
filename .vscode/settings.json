@@ -1,7 +1,10 @@
 {
     "files.associations": {
-        "oled.h": "c",
-        "stdlib.h": "c",
-        "timer.h": "c"
+        "uart.h": "c",
+        "ieeprom.h": "c",
+        "eeprom.h": "c",
+        "inttypes.h": "c",
+        "rtc": "cpp",
+        "stdint.h": "c"
     }
 }

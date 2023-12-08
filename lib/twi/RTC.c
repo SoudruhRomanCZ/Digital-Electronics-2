@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <twi.h>
 #include <avr/eeprom.h>
+#include <uart.h>
 
 // RTC
 #define RTC_ADR  0x68
@@ -87,21 +88,37 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     //twi_stop();
 }
 
+uint16_t address =0;
+// Function to save data to RTC EEPROM memory
+uint16_t saveDataToRtcEeprom(uint8_t data) { //have to save 13 bytes 104 bits of data
+    eeprom_write_byte(address,data);
+    address++;
+    if(address>=32768){
+    address=0;
+    }
+    return address;
+}
+
 
 /*
-// Function to save data to RTC EEPROM memory
-void saveDataToRtcEeprom() { //have to save 13 bytes 104 bits of data
-    // Read previous data from Arduino's EEPROM memory
-    struct RTC_values_structure prevData;
-    eeprom_read_block(&prevData, EEPROM_ADR, sizeof(struct RTC_values_structure));
-
-    // Compare if the data has changed
-    if (memcmp(&prevData, &rtc, sizeof(struct RTC_values_structure)) != 0) {
-        // Jump to the EEPROM memory address and save new data
-        eeprom_write_block(&rtc, EEPROM_ADR, sizeof(struct RTC_values_structure));
+uint8_t read=0;
+void readDatafromRtcEeprom() { 
+    char string[4];
+    for(uint16_t i;i<=address;i++){
+        itoa(i, string, 10);
+        uart_puts(string);
+        read=eeprom_read_byte(i);   
+        writeDataToUART(read, "data from EEPROM ", 1, 1);
     }
+    itoa(address-1, string, 10);
+    uart_puts(string);
+    uart_puts(" adresa");
+    writeDataToUART(eeprom_read_byte(address-1), "percenta from EEPROM ", 0, 1);
+    uart_puts("\r\n");
 }
 */
+
+
 /*
 void writeDataToEEPROM(struct Data* data) {
     eeprom_write_block((const void*)data, (void*)0, sizeof(struct Data));

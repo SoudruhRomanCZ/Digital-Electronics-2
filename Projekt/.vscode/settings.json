@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "uart.h": "c",
-        "ieeprom.h": "c",
-        "eeprom.h": "c",
-        "inttypes.h": "c",
-        "rtc": "cpp"
-    }
-}
