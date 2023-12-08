@@ -120,7 +120,7 @@ int main(void)
     GPIO_mode_input_pullup(&DDRB, BUTTON);
 
     // Load time into DS3231 
-    writeTimeToDS3231(0x50,0x59,0x23,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
+    writeTimeToDS3231(0x00,0x00,0x23,4,30,11,2023); //loading this time to DS3231 after startup so it is not starting from 0 0 0
     
     uint16_t currentAddress = 0 ;
     uint8_t button_was_pressed = 0;
@@ -136,12 +136,18 @@ int main(void)
             percentualValue = 100-calculus;
            
             // Save current data to RTC EEPROM
-            currentAddress = saveDataToRtcEeprom(percentualValue);
+            currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,mois_int );
+            uint16_t numoflogs = currentAddress/6;
+
+
 
             // Out of range ERROR handeling
             if(percentualValue > 100){
                 percentualValue = 100;
             }
+
+
+            
 
             if (percentualValue<30){
                 //writeDataToUART(percentualValue, " % : Plant is thirsty, turning on the pump\r\n" , 0, 1);
@@ -216,21 +222,54 @@ int main(void)
         oled_display();
         // Do not print it again and wait for the new data
         new_sensor_data = 0;
-        }
+                // If the button was pressed then display the stored data in serial monitor (data EXPORT)
 
-        // If the button was pressed then display the stored data in serial monitor (data EXPORT)
-        if(GPIO_read(&DDRB,BUTTON)==0){
-            button_was_pressed = 1; 
-        }
 
         if(button_was_pressed == 1){
+            writeDataToUART(numoflogs, " total number of logs", 0,0);
+            uart_puts("\r\n");
+        
+
+            for (uint16_t i = 0; i < numoflogs; i++)
+            {
+                writeDataToUART(i+1, ". log Time : ",0,0);
+                writeDataToUART((eeprom_read_byte(0+i*6) & 0b00110000)/16, "", 0, 0);
+                writeDataToUART(eeprom_read_byte(0+i*6) & 0b00001111, ":" , 0, 0);
+                writeDataToUART((eeprom_read_byte(1+i*6) & 0b01110000)/16, "" , 0, 0);
+                writeDataToUART(eeprom_read_byte(1+i*6) & 0b00001111, ":" , 0, 0);
+                writeDataToUART((eeprom_read_byte(2+i*6) & 0b01110000)/16, "" , 0, 0);
+                writeDataToUART(eeprom_read_byte(2+i*6) & 0b00001111, " Temperature : " , 0, 0);
+                writeDataToUART(eeprom_read_byte(3+i*6), "." , 0, 0);  //temperature
+                writeDataToUART(eeprom_read_byte(4+i*6), " °C Moisture : " , 0, 0);
+                writeDataToUART(eeprom_read_byte(5+i*6), " ", 0, 1); // moisture
+                
+                /*
+                for (uint16_t j = 0; j < 5; j++)
+                {
+                    writeDataToUART(eeprom_read_byte(j+i*5), " ", 0, 1);
+                }*/
+                uart_puts("\r\n");
+                
+            }
+
+            /*
             for (uint16_t i = 0; i <= currentAddress; i++)
             {
-                writeDataToUART(eeprom_read_byte(i), "percenta from EEPROM ", 0, 1);
-                uart_puts("\r\n");
-            }
+                writeDataToUART(i, " address :",0,0);
+                writeDataToUART(eeprom_read_byte(i), " ", 0, 1);
+                if(i%5==0 & i!=0){
+                    uart_puts("\r\n");
+                }
+            }*/
+
             uart_puts("That's all the data !");
+            uart_puts("\r\n");
             button_was_pressed = 0;
+        }
+        }
+
+        if(!(PINB & (1 << BUTTON))) {
+            button_was_pressed = 1;       
         }
 
 
@@ -394,6 +433,7 @@ ISR(TIMER1_OVF_vect)
             rtc.secs = twi_read(TWI_ACK);
             rtc.mins = twi_read(TWI_ACK);
             rtc.hours = twi_read(TWI_NACK);
+            new_sensor_data = 1;
         }
         twi_stop();
 }

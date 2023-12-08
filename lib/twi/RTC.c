@@ -90,8 +90,18 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
 
 uint16_t address =0;
 // Function to save data to RTC EEPROM memory
-uint16_t saveDataToRtcEeprom(uint8_t data) { //have to save 13 bytes 104 bits of data
-    eeprom_write_byte(address,data);
+uint16_t saveDataToRtcEeprom(uint8_t hours, uint8_t minutes, uint8_t seconds, uint8_t temp_int,uint8_t temp_dec, uint8_t moist) { //have to save 13 bytes 104 bits of data
+    eeprom_write_byte(address,hours);
+    address++;
+    eeprom_write_byte(address,minutes);
+    address++;
+    eeprom_write_byte(address,seconds);
+    address++;
+    eeprom_write_byte(address,temp_int);
+    address++;
+    eeprom_write_byte(address,temp_dec);
+    address++;
+    eeprom_write_byte(address,moist);
     address++;
     if(address>=32768){
     address=0;
