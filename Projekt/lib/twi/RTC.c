@@ -14,12 +14,30 @@
 #define MONTH_REG 0x05
 #define YEAR_REG 0x06
 
-uint64_t address=0;
-uint8_t Data;
-struct Data* data;
+// Define the data structure for DHT12 and RTC
+struct Values_structure {
+    uint8_t hum_int;
+    uint8_t hum_dec;
+    uint8_t temp_int;
+    uint8_t temp_dec;
+    uint8_t checksum;
+} dht12;
+
+struct RTC_values_structure {
+    uint8_t secs;
+    uint8_t mins;
+    uint8_t hours;
+    uint8_t days;
+    uint8_t date;
+    uint8_t months;
+    uint8_t years;
+} rtc;
+
+uint16_t mois_int;
+uint64_t address;
 
 // Function to write time to DS3231 RTC module
-void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint8_t year) {
+void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t day, uint8_t date, uint8_t month, uint16_t year) {
     // Start I2C communication
     twi_start();
 
@@ -89,109 +107,31 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     // Stop I2C communication
     twi_stop();
 }
-/*
-// Function to save data to RTC EEPROM memory
-void saveDataToRtcEeprom() { //have to save 13 bytes 104 bits of data
-    // Read previous data from Arduino's EEPROM memory
-    struct RTC_values_structure prevData;
-    eeprom_read_block(&prevData, EEPROM_ADR, sizeof(struct RTC_values_structure));
 
-    // Compare if the data has changed
-    if (memcmp(&prevData, &rtc, sizeof(struct RTC_values_structure)) != 0) {
-        // Jump to the EEPROM memory address and save new data
-        eeprom_write_block(&rtc, EEPROM_ADR, sizeof(struct RTC_values_structure));
-    }
-}
-*/
-
-void writedatatoEEPROM(data) {
-    // Start I2C communication
-    twi_start();
-
-    // Check ACK from RTC 
-    if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
-    eeprom_write_block((const void*)data, (void*)0, sizeof(data));
-    address=address+sizeof(data);
-    }
-    twi_stop();
-}
-void write8datatoEEPROM(Data) {
-    // Start I2C communication
-    twi_start();
-
-    // Check ACK from RTC 
-    if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
-    eeprom_write_byte(address, Data);
-    address++;
-    }
-    twi_stop();
-}
-void readdatatoEEPROM(uint8_t x) {
-    for (uint8_t i = 0; i <x;){
-        // Start I2C communication
-        twi_start();
-
-        // Check ACK from RTC 
-        if (twi_write((EEPROM_ADR << 1) | TWI_WRITE) == 0) {
-            twi_write(Data);  
-        }
-        twi_stop();
-        twi_start();
-        Data=eeprom_read_byte(i);
-        twi_stop();
-    }   
-}
-/*
 void writeDataToEEPROM() {
-    struct Values_structure dht12Data;
-    struct RTC_values_structure rtcData;
+    // Calculate the total size of the data structure
+    uint8_t totalSize = sizeof(struct Values_structure) + sizeof(struct RTC_values_structure) + sizeof(uint16_t);
 
-    // Copy data from dht12 and rtc structures to separate variables
-    dht12Data.hum_int = dht12.hum_int;
-    dht12Data.hum_dec = dht12.hum_dec;
-    dht12Data.temp_int = dht12.temp_int;
-    dht12Data.temp_dec = dht12.temp_dec;
-    dht12Data.checksum = dht12.checksum;
+    // Start EEPROM write operation
+    eeprom_write_block(&dht12, (void*)0, sizeof(dht12)); // Write DHT12 data
+    eeprom_write_block(&rtc, (void*)sizeof(dht12), sizeof(rtc)); // Write RTC data
+    eeprom_write_word((uint16_t*)(sizeof(dht12) + sizeof(rtc)), mois_int); // Write mois_int
 
-    rtcData.secs = rtc.secs;
-    rtcData.mins = rtc.mins;
-    rtcData.hours = rtc.hours;
-    rtcData.days = rtc.days;
-    rtcData.date = rtc.date;
-    rtcData.months = rtc.months;
-    rtcData.years = rtc.years;
-
-    // Write the data structures to EEPROM
-    eeprom_write_block(&dht12Data, (void*)0, sizeof(struct Values_structure));
-    eeprom_write_block(&rtcData, (void*)sizeof(struct Values_structure), sizeof(struct RTC_values_structure));
-
-    // Write the mois_int variable to EEPROM
-    eeprom_write_word((uint16_t*) (sizeof(struct Values_structure) + sizeof(struct RTC_values_structure)), mois_int);
+    // Increment the EEPROM address for the next write operation
+    // You might need to store and manage the EEPROM address elsewhere in your code
+    address += totalSize;
 }
+
 void readDataFromEEPROM() {
-    struct Values_structure dht12Data;
-    struct RTC_values_structure rtcData;
+    // Read DHT12 data from EEPROM
+    eeprom_read_block(&dht12, (void*)0, sizeof(dht12));
 
-    // Read the data structures from EEPROM
-    eeprom_read_block(&dht12Data, (const void*) 0, sizeof(struct Values_structure));
-    eeprom_read_block(&rtcData, (const void*) sizeof(struct Values_structure), sizeof(struct RTC_values_structure));
+    // Read RTC data from EEPROM
+    eeprom_read_block(&rtc, (void*)sizeof(dht12), sizeof(rtc));
 
-    // Copy the data from the separate variables to dht12 and rtc structures
-    dht12.hum_int = dht12Data.hum_int;
-    dht12.hum_dec = dht12Data.hum_dec;
-    dht12.temp_int = dht12Data.temp_int;
-    dht12.temp_dec = dht12Data.temp_dec;
-    dht12.checksum = dht12Data.checksum;
+    // Read mois_int from EEPROM
+    mois_int = eeprom_read_word((uint16_t*)(sizeof(dht12) + sizeof(rtc)));
 
-    rtc.secs = rtcData.secs;
-    rtc.mins = rtcData.mins;
-    rtc.hours = rtcData.hours;
-    rtc.days = rtcData.days;
-    rtc.date = rtcData.date;
-    rtc.months = rtcData.months;
-    rtc.years = rtcData.years;
-
-    // Read the mois_int variable from EEPROM
-    mois_int = eeprom_read_word((const uint16_t*)(sizeof(struct Values_structure) + sizeof(struct RTC_values_structure)));
+    // Now you have the data stored in the respective variables
+    // You can use these variables to print the data in the terminal or render a graph on an OLED display
 }
-*/
