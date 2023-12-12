@@ -1,14 +1,10 @@
-# Digital-Electronics-2
-## H2
-### H3
-#### H4
-##### H5
-###### H6
-
-Alternatively, for H1 and H2, an underline-ish style:
-
-Alt-H1
-======
-
-Alt-H2
-------
+H1 Smart Watering Plant project
+In this project we will use xxx soil moisture sensor alongside DHT12 humidity sensor and D3231 RTC module.
+Hardware used: Arduino uno R3
+xxx moisture sensor
+DTH12 humodity and temperature sensor
+D3231 RTC module with xxx EEPROM memory chip
+relay or DC pump
+Software used: Visual studio Code with PlatformIO extension
+C programing language
+headers and example code from DE2 lectures
