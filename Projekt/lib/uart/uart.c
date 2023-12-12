@@ -580,10 +580,10 @@ void writeDataToUART(int data, char* inter, int tab, int end)
     uart_puts(string);
     uart_puts(inter);
     if (tab==1){
-        uart_puts('\t');
+        uart_puts("\t");
     }
     if (end==1){
-        uart_puts('\r\n');
+        uart_puts("\r\n");
     }
     
 }/* riteDataToUART */

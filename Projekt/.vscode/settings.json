@@ -4,6 +4,8 @@
         "ieeprom.h": "c",
         "eeprom.h": "c",
         "inttypes.h": "c",
-        "rtc": "cpp"
+        "rtc": "cpp",
+        "interrupt.h": "c",
+        "stdlib.h": "c"
     }
 }
