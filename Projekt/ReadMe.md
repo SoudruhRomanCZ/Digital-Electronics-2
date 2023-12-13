@@ -62,7 +62,7 @@ The Smart Plant Watering System firmware facilitates automated plant care by mon
 - Water Pump Relay: Connected to PB0 - arduino pin D8.
 - Button for Data Export: Connected to PB4 - arduino pin D12.
   
-  ![Schematic](pics/schmatic.png)
+  ![Schematic](pics/schematic.png)
   
 ### Communication Interfaces
 - TWI (Two-Wire Interface): Used for communication with OLED, DHT12 sensor, and RTC.
