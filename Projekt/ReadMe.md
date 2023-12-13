@@ -90,7 +90,7 @@ The Smart Plant Watering System firmware facilitates automated plant care by mon
 - The `main()` function orchestrates system initialization, sensor readings, moisture calculations, control logic, and user interactions.
 
 #### Soil moisture reading
-```
+```c
 // Including needed libraries
 #include <avr/io.h>
 #include <stdlib.h>
@@ -151,11 +151,10 @@ ISR(ADC_vect)
     // Note that, register pair ADCH and ADCL can be read as a 16-bit value ADC
     mois_int = ADC;
 }
-
 ```
 
 #### Temperature reading
-```
+```c
 #include <oled.h>
 #include <twi.h>
 #include <twi.h>
@@ -191,7 +190,22 @@ twi_stop();
 ```
 
 #### Time reading
-```
+```c
+
+#include <RTC.c>
+
+// Declaration of "rtc" variable with structure "RTC_values_structure"
+struct RTC_values_structure {
+    uint8_t secs;
+    uint8_t mins;
+    uint8_t hours;
+} rtc;
+
+// RTC
+#define RTC_ADR  0x68
+#define EEPROM_ADR 0x57
+#define SECONDS_REG 0x00
+
 // Read Time from RTC DS3231; SLA = 0x68
 // Test ACK from RTC
 twi_start();
@@ -211,7 +225,11 @@ twi_stop();
 ```
 
 #### OLED printing
-```
+```c
+#include <oled.h>
+// TWI OLED adress
+#define OLED_ADR 0x3c
+
 // Set all obtained data to be displayed on OLED
 if(twi_test_address(OLED_ADR) == 0){
     // Display time from RTC
@@ -257,15 +275,16 @@ if(twi_test_address(OLED_ADR) == 0){
 oled_display();
 ```
 ![OLED Printing flow chart](pics/Flow_chart.png)
+
 #### Data logging to EEPROM
-```
+```c
 // Save current data to RTC's EEPROM
 currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,mois_int);
 uint16_t numoflogs = currentAddress/6; // devided by number of saved bytes per 1 saving
 ```
 
 #### Data printing from EEPROM
-```
+```c
 if(!(PINB & (1 << BUTTON))) {
     button_was_pressed = 1;       
 }
@@ -292,7 +311,7 @@ if(button_was_pressed == 1){
     }
 ```
 #### Setting time to RTC DS3231
-```
+```c
 // main.c
 writeTimeToDS3231(0x00,0x00,0x23,4,30,11,2023);
 // lib/twi/RTC.c
