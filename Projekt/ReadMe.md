@@ -253,7 +253,7 @@ if(twi_test_address(OLED_ADR) == 0){
 // Display all set data on OLED
 oled_display();
 ```
-
+![OLED Printing flow chart](pics/Flow_chart.png)
 #### Data logging to EEPROM
 ```
 // Save current data to RTC's EEPROM
