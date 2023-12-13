@@ -30,14 +30,7 @@ struct RTC_values_structure {
     uint8_t hours;
 } rtc;
 
-uint16_t mois_int; //total of 112b bits to store every reading at 32kb storage it is 286 readings == 1 reading a second 4 min 46 sec of saved data
-// Normal values of moisture sensor
-const uint16_t AirValue = 950;   //you need to replace this value with Value_1
-const uint16_t WaterValue = 650;  //you need to replace this value with Value_2 
-// Variable for conversion of moisture sensor data to percentual value
-const int onePercent = 3;
-uint8_t percentualValue;
-uint16_t calculus;
+
 // Flag for printing new data from sensor
 volatile uint8_t new_sensor_data = 0;
 
@@ -50,8 +43,17 @@ volatile uint8_t new_sensor_data = 0;
 #define SECONDS_REG 0x00
 // TWI OLED adress
 #define OLED_ADR 0x3c
-// defining pins of GPIO
+// variable for voltage conversion of moisture humidity
+uint16_t mois_int; 
+// Normal values of moisture sensor
+const uint16_t AirValue = 950;   
+const uint16_t WaterValue = 650; 
+// Variable for conversion of moisture sensor data to percentual value
+const int onePercent = 3;
+uint8_t percentualValue;
+uint16_t calculus;
 #define soil PC0
+// defining pins of GPIO
 #define RELAY PB0
 #define LED_BLUE PB1
 #define LED_GREEN PB2   
@@ -136,20 +138,18 @@ int main(void)
             // Set all obtained data to be displayed on OLED
             if(twi_test_address(OLED_ADR) == 0){
                 // Display time from RTC
-                if (twi_test_address(RTC_ADR) == 0){
-                    // mask and diveded by 16 for making it the upper half of byte and only 2 bits used for tens of hours 10-60
-                    writeDataToOLED((rtc.hours& 0b00110000)/16,0,0);
-                    // mask for counting 0-16, 4 bits used for hours 0-9 
-                    writeDataToOLED(rtc.hours& 0b00001111,1,0); 
-                    oled_gotoxy(2, 0);
-                    oled_puts(":");
-                    writeDataToOLED((rtc.mins& 0b01110000)/16,3,0); 
-                    writeDataToOLED(rtc.mins& 0b00001111,4,0);
-                    oled_gotoxy(5, 0);
-                    oled_puts(":");
-                    writeDataToOLED((rtc.secs& 0b01110000)/16,6,0);
-                    writeDataToOLED(rtc.secs& 0b00001111,7,0);
-                }
+                // mask and diveded by 16 for making it the upper half of byte and only 2 bits used for tens of hours 10-60
+                writeDataToOLED((rtc.hours& 0b00110000)/16,0,0);
+                // mask for counting 0-16, 4 bits used for hours 0-9 
+                writeDataToOLED(rtc.hours& 0b00001111,1,0); 
+                oled_gotoxy(2, 0);
+                oled_puts(":");
+                writeDataToOLED((rtc.mins& 0b01110000)/16,3,0); 
+                writeDataToOLED(rtc.mins& 0b00001111,4,0);
+                oled_gotoxy(5, 0);
+                oled_puts(":");
+                writeDataToOLED((rtc.secs& 0b01110000)/16,6,0);
+                writeDataToOLED(rtc.secs& 0b00001111,7,0);
                 // Display temperature from temperature sensor
                 if (twi_test_address(SENSOR_ADR) == 0){
                     writeDataToOLED(dht12.temp_int,0,2);
@@ -215,7 +215,7 @@ int main(void)
 * Purpose:  Read temperature and humidity from DHT12, SLA = 0x5c.
 **********************************************************************/
 ISR(TIMER1_OVF_vect)
-{   
+{   // Activating of reading Voltage value of pin PC0- arduinos A0
     ADCSRA = ADCSRA | (1<<ADSC);
     // Test ACK from sensor
     twi_start();
