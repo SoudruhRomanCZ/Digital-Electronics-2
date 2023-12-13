@@ -13,7 +13,7 @@ In this project we will use xxx soil moisture sensor alongside DHT12 humidity se
 ## Software used:
 - Visual studio Code with PlatformIO extension
 - C programing language
-- headers and example code from DE2 lectures (source: [DE2 lectures](https://github.com/tomas-fryza/digital-electronics-2/tree/master/solutions)
+- headers and example code from DE2 lectures (source: [DE2 lectures](https://github.com/tomas-fryza/digital-electronics-2/tree/master/solutions))
 ## Structure of the project
 This project was proggramed in VisualStudio Code with addon named PlatformIO. After creating project folder via PlatformIO interface, it generates basic folder structure where we added needed .h and .c library files from previus lectures of Digital Electronics 2. Picture 1 shows the hierarchy of such project folder.
 
