@@ -83,6 +83,7 @@ int main(void)
     uart_init(UART_BAUD_SELECT(115200, F_CPU));
     sei();  // Needed for UART
     // Configure Analog-to-Digital Convertion unit
+    ADMUX = ADMUX | (1<<REFS0);
     // Select input channel ADC0 (voltage divider pin)
     ADMUX = ADMUX & ~(1<<MUX3 | 1<<MUX2 | 1<<MUX1 | 1<<MUX0);
     // Enable ADC module
@@ -112,7 +113,7 @@ int main(void)
             calculus = calculus/onePercent;
             percentualValue = 100-calculus;
             // Save current data to RTC's EEPROM
-            currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,mois_int);
+            currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,percentualValue);
             uint16_t numoflogs = currentAddress/6; // devided by number of saved bytes per 1 saving
             // Determine if the watering system is running or not based on percentual moisture
             // error handling, if sensor is not connected

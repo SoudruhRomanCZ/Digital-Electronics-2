@@ -358,7 +358,9 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
 
 ## Connection 
 
-![Connection of periferies](pics/connection.png)
+![Connection of periferies](pics/connection1.png)
+
+![Connection of periferies](pics/connection2.png)
 
 ## Console output
 
