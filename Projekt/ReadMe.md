@@ -348,3 +348,11 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     twi_stop();
 }
 ```  
+
+## Connection 
+
+![Connection of periferies](pics/connection.png)
+
+## Console output
+
+![Console output](pics/console.png)
