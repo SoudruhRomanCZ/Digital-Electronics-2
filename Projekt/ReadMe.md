@@ -125,8 +125,15 @@ calculus = calculus/onePercent;
 percentualValue = 100-calculus;
 
 // Determine if the watering system is running or not based on percentual moisture
+// error handling, if sensor is not connected
+if (percentualValue < 10) { 
+GPIO_write_high(&PORTB, LED_RED);
+GPIO_write_high(&PORTB, LED_GREEN);
+GPIO_write_high(&PORTB, LED_BLUE);
+GPIO_write_high(&PORTB, RELAY);
+} 
 //low moisture, turning on the pump
-if (percentualValue<30){ 
+else if (percentualValue<30){ 
     GPIO_write_high(&PORTB, LED_RED);
     GPIO_write_low(&PORTB, LED_GREEN);
     GPIO_write_low(&PORTB, LED_BLUE);
