@@ -115,13 +115,14 @@ int main(void)
             currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,mois_int);
             uint16_t numoflogs = currentAddress/6; // devided by number of saved bytes per 1 saving
             // Determine if the watering system is running or not based on percentual moisture
-            //low moisture, turning on the pump
-            if (percentualValue < 10) { // error handling, if sensor is not connected
+            // error handling, if sensor is not connected
+            if (percentualValue < 10) { 
             GPIO_write_high(&PORTB, LED_RED);
             GPIO_write_high(&PORTB, LED_GREEN);
             GPIO_write_high(&PORTB, LED_BLUE);
             GPIO_write_high(&PORTB, RELAY);
-            } 
+            }
+            //low moisture, turning on the pump 
             else if (percentualValue<30){ 
                 GPIO_write_high(&PORTB, LED_RED);
                 GPIO_write_low(&PORTB, LED_GREEN);
