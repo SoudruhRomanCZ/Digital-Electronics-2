@@ -14,11 +14,12 @@ The Smart Plant Watering System firmware facilitates automated plant care by mon
 - **DHT12 Humidity and Temperature Sensor**
 - **DS3231 RTC Module** with attached EEPROM memory chip
 - **5V Relay Module** or 5V DC Pump (max 20mA current)
+- **RGB LED**
 
 ## Software Used
 - **Visual Studio Code** with PlatformIO extension
 - **C Programming Language**
-- **Headers and Example Code** sourced from DE2 lectures ([DE2 lectures](https://github.com/tomas-fryza/digital-electronics-2/tree/master/solutions))
+- **Headers and Example Code** sourced from [DE2 lectures](https://github.com/tomas-fryza/digital-electronics-2/tree/master/solutions)
 
 ## File Structure
 ### Source Files
@@ -48,19 +49,19 @@ The Smart Plant Watering System firmware facilitates automated plant care by mon
 - Utilizes ADC for reading soil moisture and computes the percentage of moisture.
 ### Plant Watering Logic
 - Controls the relay based on preset moisture thresholds.
-- Indication LEDs (Red, Green, Blue) reflect the current soil moisture level.
 ### Data Storage
 - Saves sensor data (time, temperature, moisture) into the RTC's EEPROM memory.
 ### User Interaction
 - Displays real-time data (time, temperature, moisture) on the OLED screen.
+- Indication LEDs (Red, Green, Blue) reflect the current soil moisture level.
 - Allows exporting stored data via UART to a serial monitor upon button press.
 
 ## Hardware Configuration
 ### I/O Pin Configuration
-- Soil Moisture Sensor: Connected to ADC0 - arduino pin A0.
-- LEDs: Red (PB1), Green (PB2), Blue (PB3) - arduino pins D9,D10,D11.
-- Water Pump Relay: Connected to PB0 - arduino pin D8.
-- Button for Data Export: Connected to PB4 - arduino pin D12.
+- Soil moisture sensor: Connected to ADC0 - arduino pin A0.
+- LEDs: Blue (PB1), Green (PB2), Red (PB3) - arduino pins D9,D10,D11.
+- Relay: Connected to PB0 - arduino pin D8.
+- Button for data export: Connected to PB4 - arduino pin D12.
   
   ![Schematic](pics/schematic.png)
   
@@ -90,6 +91,7 @@ The Smart Plant Watering System firmware facilitates automated plant care by mon
 - The `main()` function orchestrates system initialization, sensor readings, moisture calculations, control logic, and user interactions.
 
 #### Soil moisture reading
+- This code segment deals with the soil moisture reading using the ADC. It starts by configuring the ADC and handling interrupts for ADC conversion completion. It then reads the moisture sensor's analog input and converts it to a percentage value to determine the watering system's operation based on predefined thresholds.
 ```c
 // Including needed libraries
 #include <avr/io.h>
@@ -154,6 +156,7 @@ ISR(ADC_vect)
 ```
 
 #### Temperature reading
+- This code section is designed to interact with a DHT12 sensor. It initiates a Two Wire Interface (TWI) communication, writes to the sensor’s memory address for temperature data, and then reads the temperature data from the sensor. The read data, which includes both the integer and decimal parts of the temperature, is stored in a predefined structure for further usage. This allows the program to effectively retrieve temperature readings from the DHT12 sensor.
 ```c
 #include <oled.h>
 #include <twi.h>
@@ -190,6 +193,7 @@ twi_stop();
 ```
 
 #### Time reading
+- This code section communicates with a DS3231 Real Time Clock (RTC) to retrieve the current time. It initiates a TWI communication, writes to the RTC’s seconds register, and then reads the seconds, minutes, and hours from the RTC. The read time data is stored in a predefined structure for further processing or usage. This allows the program to effectively retrieve time readings from the DS3231 RTC.
 ```c
 
 #include <RTC.c>
@@ -225,6 +229,7 @@ twi_stop();
 ```
 
 #### OLED printing
+- This code segment is designed to display various data on an OLED screen. It checks if the OLED screen is available and then proceeds to display the time retrieved from a Real Time Clock (RTC), temperature data from a DHT12 sensor, and a plant’s moisture percentage. The time, temperature, and moisture data are formatted and written to specific locations on the OLED screen. The moisture level is also categorized into “Dry”, “Wet”, or “Watered” based on its percentage value. After all the data is set, it is displayed on the OLED screen. This allows the program to present multiple types of sensor data in a user-friendly manner on an OLED screen.
 ```c
 #include <oled.h>
 // TWI OLED adress
@@ -277,13 +282,15 @@ oled_display();
 ![OLED Printing flow chart](pics/Flow_chart.png)
 
 #### Data logging to EEPROM
+- This code section is responsible for logging data to the EEPROM of a Real Time Clock (RTC). It saves the current time, temperature, and moisture data to the RTC’s EEPROM. The address where the data is saved is stored in the ```currentAddress``` variable. The number of logs is then calculated by dividing the current address by the number of bytes saved per log, which is 6 in this case. This allows the program to keep track of the number of logs and manage the storage space in the RTC’s EEPROM effectively.
 ```c
 // Save current data to RTC's EEPROM
 currentAddress = saveDataToRtcEeprom(rtc.hours, rtc.mins, rtc.secs, dht12.temp_int,dht12.temp_dec,mois_int);
 uint16_t numoflogs = currentAddress/6; // devided by number of saved bytes per 1 saving
 ```
 
-#### Data printing from EEPROM
+#### Data export from EEPROM
+- This code section is designed to export data from the EEPROM of a Real Time Clock (RTC) when a button is pressed. It checks if the button was pressed and then reads the stored time, temperature, and moisture data from the RTC’s EEPROM. The data is formatted and written to the UART for display in a serial monitor. The number of logs is also displayed at the beginning. After all the data is exported, a message indicating the end of data is sent to the UART.
 ```c
 if(!(PINB & (1 << BUTTON))) {
     button_was_pressed = 1;       
@@ -311,6 +318,7 @@ if(button_was_pressed == 1){
     }
 ```
 #### Setting time to RTC DS3231
+- This code section is designed to set the time on a DS3231 Real Time Clock (RTC) module. It initiates a TWI communication, checks for an acknowledgment from the RTC, and then writes the time data (seconds, minutes, hours, day, date, month, and year) to the RTC module. The time data is written to specific registers in the RTC module. After all the time data is written, the TWI communication is stopped. This allows the program to set the current time on the DS3231 RTC module.
 ```c
 // main.c
 writeTimeToDS3231(0x00,0x00,0x23,4,30,11,2023);
@@ -339,7 +347,4 @@ void writeTimeToDS3231(uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t 
     // Stop I2C communication
     twi_stop();
 }
-```    
-## Notes
-- Ensure accurate connections and a stable power supply to prevent sensor malfunction.
-- Modify moisture threshold values carefully for optimal plant care.
+```  
